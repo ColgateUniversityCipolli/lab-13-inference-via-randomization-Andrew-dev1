@@ -286,6 +286,8 @@ repeat{
   high<- mu.lower.close + delta   # xbar
   p.val <- mean(rand$xbars <= low) +
       mean(rand$xbars >= high)
+  # delta <- mean(zebra.finches.dat$closer)
+  # p.val <- mean(rand$xbars >= delta)
 
   
   if(p.val < 0.05){
@@ -321,6 +323,8 @@ repeat{
   (high<- mu.upper.close + delta)   # xbar
   (p.val <- mean(rand$xbars <= low) +
       mean(rand$xbars >= high))
+  # delta <- mean(zebra.finches.dat$closer)
+  # p.val <- mean(rand$xbars <= delta)
   
   if(p.val < 0.05){
     break
@@ -331,8 +335,8 @@ repeat{
 
 
 ## CI for further 
-starting.point <- mean(zebra.finches.dat$further)
-mu.lower.far <- starting.point
+starting.point.far <- mean(zebra.finches.dat$further)
+mu.lower.far <- starting.point.far
 
 repeat{
   rand <- tibble(xbars = rep(NA, R))
@@ -358,7 +362,8 @@ repeat{
   high<- mu.lower.far + delta   # xbar
   p.val <- mean(rand$xbars <= low) +
       mean(rand$xbars >= high)
-  
+  # delta <- mean(zebra.finches.dat$further)
+  # p.val <- mean(rand$xbars <= delta)
   
   if(p.val < 0.05){
     break
@@ -368,7 +373,7 @@ repeat{
 }
 
 
-mu.upper.far <- starting.point
+mu.upper.far <- starting.point.far
 repeat{
   rand <- tibble(xbars = rep(NA, R))
   
@@ -385,7 +390,7 @@ repeat{
   }
   
   rand <- rand |>
-    mutate(xbars = xbars + mu.upper.close) # shifting back
+    mutate(xbars = xbars + mu.upper.far) # shifting back
   
   # p-value 
   delta <- abs(mean(zebra.finches.dat$further) - mu.upper.far)
@@ -393,6 +398,8 @@ repeat{
   high<- mu.upper.far + delta   # xbar
   p.val <- mean(rand$xbars <= low) +
     mean(rand$xbars >= high)
+  # delta <- mean(zebra.finches.dat$further)
+  # p.val <- mean(rand$xbars >= delta)
   
   if(p.val < 0.05){
     break
@@ -403,8 +410,8 @@ repeat{
 
 
 ## CI for diff
-starting.point <- mean(zebra.finches.dat$diff)
-mu.lower.diff <- starting.point
+starting.point.diff <- mean(zebra.finches.dat$diff)
+mu.lower.diff <- starting.point.diff
 
 repeat{
   rand <- tibble(xbars = rep(NA, R))
@@ -440,7 +447,7 @@ repeat{
 }
 
 
-mu.upper.diff <- starting.point
+mu.upper.diff <- starting.point.diff
 repeat{
   rand <- tibble(xbars = rep(NA, R))
   
@@ -474,7 +481,7 @@ repeat{
 }
 
 
-rand.CI <- tibble(" " = c(close, far, diff), 
+rand.CI <- tibble(Condition = c("close", "far", "diff"), 
                   lower.limit = c(mu.lower.close, mu.lower.far, mu.lower.diff), 
                   upper.limit = c(mu.upper.close, mu.upper.far, mu.upper.diff))
 

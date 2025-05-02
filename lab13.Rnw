@@ -98,13 +98,13 @@ error.plot
   which yields
   \[ n = \left(\frac{\text{skew}}{6(0.10\alpha)} (2t^2 + 1) f_Z(t)\right)^2.\]
 
+\textbf{Answer: }We would need a sample size of at least 521 for a left-tailed test.
 <<message =F, warning =F, size = 'scriptsize'>>=
 alpha = 0.05
 t.val <- qnorm(alpha) 
 pdf <- dnorm(t.val)
 (target.size = ((skew / (6*(0.1*alpha))) * (2 * (t.val^2) + 1) * pdf)^2)
 @
-We would need a sample size of at least 521 for a left-tailed test.
 
 \end{enumerate}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -369,18 +369,260 @@ randomized <- randomized |>
 @
 
   \item Compute the randomization test $p$-value for each test.
+  
+  \textbf{Answer: }The p value is 0 for all three cases, so the close, further, and difference data are in the tailed regions of their respective null distributions. The closer data is in its right-tailed zone, further in its left-tailed zone, and difference in both tailed zones, so they all reject the null hypothesis.
 <<message =F, warning =F, size = 'scriptsize'>>=
+############################################
+## 3b
+## found observed data 
+observed.close.mean <- mean(zebra.finches.dat$closer -mu0)
+observed.far.mean <- mean(zebra.finches.dat$further -mu0)
+observed.diff.mean <- mean(zebra.finches.dat$diff -mu0)
 
+## p-values for each value type 
+rand.p.close <- mean(randomized$close.means >= observed.close.mean)
+rand.p.far <- mean(randomized$far.means <= observed.far.mean)
+
+(delta <- abs(mean(zebra.finches.dat$diff) - mu0))
+(low <- mu0 - delta) # mirror
+(high<- mu0 + delta)   # xbar
+rand.p.diff <- mean(randomized$diff.means <= low) +
+  mean(randomized$diff.means >= high)
+
+c(rand.p.close,rand.p.far,rand.p.diff)
 @
 
   \item Compute the randomization confidence interval by iterating over values of $\mu_0$.\\
-<<message =F, warning =F, size = 'scriptsize'>>=
-
-@
   \textbf{Hint:} You can ``search" for the lower bound from $Q_1$ and subtracting by 0.0001, 
   and the upper bound using $Q_3$ and increasing by 0.0001. You will continue until you find 
   the first value for which the two-sided $p$-value is greater than or equal to 0.05.
-<<message =F, warning =F, size = 'scriptsize'>>=
+  
+\textbf{Answer: } We have to numerically compute the confidence interval of a randomization test, so we slowly decreased the mean until the p-value hit 0.05 to find the lower bound and slowly increased the mean until the same condition to find the upper bound for each case. Our final result showed a confidence interval for the closer data as (0.1189, 0.1941), for the further data (-0.2627, -0.1427), and for the difference data (0.2689, 0.4489). 
+<<eval= F, message =F, warning =F, size = 'scriptsize'>>=
+############################################
+## 3c
+## creating randomized Confidence Intervals 
+
+R <- 1000
+mu0.iterate <- 0.0001
+starting.point <- mean(zebra.finches.dat$closer)
+mu.lower.close <- starting.point
+
+repeat{
+  rand <- tibble(xbars = rep(NA, R))
+  
+  # PREPROCESSING: shift the data to be mean 0 under H0
+  x.shift <- zebra.finches.dat$closer - mu.lower.close
+  # RANDOMIZE / SHUFFLE
+  for(i in 1:R){
+    curr.rand <- x.shift *
+      sample(x = c(-1, 1),
+             size = length(x.shift),
+             replace = T)
+    
+    rand$xbars[i] <- mean(curr.rand)
+  }
+
+  rand <- rand |>
+    mutate(xbars = xbars + mu.lower.close) # shifting back
+  
+  # p-value 
+  delta <- abs(mean(zebra.finches.dat$closer) - mu.lower.close)
+  low <- mu.lower.close - delta # mirror
+  high<- mu.lower.close + delta   # xbar
+  p.val <- mean(rand$xbars <= low) +
+      mean(rand$xbars >= high)
+
+  
+  if(p.val < 0.05){
+    break
+  }else{
+    mu.lower.close <- mu.lower.close - mu0.iterate
+  }
+}
+
+
+mu.upper.close <- starting.point
+repeat{
+  rand <- tibble(xbars = rep(NA, R))
+  
+  # PREPROCESSING: shift the data to be mean 0 under H0
+  x.shift <- zebra.finches.dat$closer - mu.upper.close
+  # RANDOMIZE / SHUFFLE
+  for(i in 1:R){
+    curr.rand <- x.shift *
+      sample(x = c(-1, 1),
+             size = length(x.shift),
+             replace = T)
+    
+    rand$xbars[i] <- mean(curr.rand)
+  }
+
+  rand <- rand |>
+    mutate(xbars = xbars + mu.upper.close) # shifting back
+  
+  # p-value 
+  delta <- abs(mean(zebra.finches.dat$closer) - mu.upper.close)
+  (low <- mu.upper.close - delta) # mirror
+  (high<- mu.upper.close + delta)   # xbar
+  (p.val <- mean(rand$xbars <= low) +
+      mean(rand$xbars >= high))
+  
+  if(p.val < 0.05){
+    break
+  }else{
+    mu.upper.close <- mu.upper.close + mu0.iterate
+  }
+}
+
+
+## CI for further 
+starting.point <- mean(zebra.finches.dat$further)
+mu.lower.far <- starting.point
+
+repeat{
+  rand <- tibble(xbars = rep(NA, R))
+  
+  # PREPROCESSING: shift the data to be mean 0 under H0
+  x.shift <- zebra.finches.dat$further - mu.lower.far
+  # RANDOMIZE / SHUFFLE
+  for(i in 1:R){
+    curr.rand <- x.shift *
+      sample(x = c(-1, 1),
+             size = length(x.shift),
+             replace = T)
+    
+    rand$xbars[i] <- mean(curr.rand)
+  }
+  
+  rand <- rand |>
+    mutate(xbars = xbars + mu.lower.far) # shifting back
+  
+  # p-value 
+  delta <- abs(mean(zebra.finches.dat$further) - mu.lower.far)
+  low <- mu.lower.far - delta # mirror
+  high<- mu.lower.far + delta   # xbar
+  p.val <- mean(rand$xbars <= low) +
+      mean(rand$xbars >= high)
+  
+  
+  if(p.val < 0.05){
+    break
+  }else{
+    mu.lower.far <- mu.lower.far - mu0.iterate
+  }
+}
+
+
+mu.upper.far <- starting.point
+repeat{
+  rand <- tibble(xbars = rep(NA, R))
+  
+  # PREPROCESSING: shift the data to be mean 0 under H0
+  x.shift <- zebra.finches.dat$further - mu.upper.far
+  # RANDOMIZE / SHUFFLE
+  for(i in 1:R){
+    curr.rand <- x.shift *
+      sample(x = c(-1, 1),
+             size = length(x.shift),
+             replace = T)
+    
+    rand$xbars[i] <- mean(curr.rand)
+  }
+  
+  rand <- rand |>
+    mutate(xbars = xbars + mu.upper.far) # shifting back
+  
+  # p-value 
+  delta <- abs(mean(zebra.finches.dat$further) - mu.upper.far)
+  low <- mu.upper.far - delta # mirror
+  high<- mu.upper.far + delta   # xbar
+  p.val <- mean(rand$xbars <= low) +
+    mean(rand$xbars >= high)
+  
+  if(p.val < 0.05){
+    break
+  }else{
+    mu.upper.far <- mu.upper.far + mu0.iterate
+  }
+}
+
+
+## CI for diff
+starting.point <- mean(zebra.finches.dat$diff)
+mu.lower.diff <- starting.point
+
+repeat{
+  rand <- tibble(xbars = rep(NA, R))
+  
+  # PREPROCESSING: shift the data to be mean 0 under H0
+  x.shift <- zebra.finches.dat$diff - mu.lower.diff
+  # RANDOMIZE / SHUFFLE
+  for(i in 1:R){
+    curr.rand <- x.shift *
+      sample(x = c(-1, 1),
+             size = length(x.shift),
+             replace = T)
+    
+    rand$xbars[i] <- mean(curr.rand)
+  }
+  
+  rand <- rand |>
+    mutate(xbars = xbars + mu.lower.diff) # shifting back
+  
+  # p-value 
+  delta <- abs(mean(zebra.finches.dat$diff) - mu.lower.diff)
+  low <- mu.lower.diff - delta # mirror
+  high<- mu.lower.diff + delta   # xbar
+  p.val <- mean(rand$xbars <= low) +
+    mean(rand$xbars >= high)
+  
+  
+  if(p.val < 0.05){
+    break
+  }else{
+    mu.lower.diff <- mu.lower.diff - mu0.iterate
+  }
+}
+
+
+mu.upper.diff <- starting.point
+repeat{
+  rand <- tibble(xbars = rep(NA, R))
+  
+  # PREPROCESSING: shift the data to be mean 0 under H0
+  x.shift <- zebra.finches.dat$diff - mu.upper.diff
+  # RANDOMIZE / SHUFFLE
+  for(i in 1:R){
+    curr.rand <- x.shift *
+      sample(x = c(-1, 1),
+             size = length(x.shift),
+             replace = T)
+    
+    rand$xbars[i] <- mean(curr.rand)
+  }
+  
+  rand <- rand |>
+    mutate(xbars = xbars + mu.upper.diff) # shifting back
+  
+  # p-value 
+  delta <- abs(mean(zebra.finches.dat$diff) - mu.upper.diff)
+  low <- mu.upper.diff - delta # mirror
+  high<- mu.upper.diff + delta   # xbar
+  p.val <- mean(rand$xbars <= low) +
+    mean(rand$xbars >= high)
+  
+  if(p.val < 0.05){
+    break
+  }else{
+    mu.upper.diff <- mu.upper.diff + mu0.iterate
+  }
+}
+
+
+rand.CI <- tibble(" " = c("close", "far", "diff"), 
+                  lower.limit = c(mu.lower.close, mu.lower.far, mu.lower.diff), 
+                  upper.limit = c(mu.upper.close, mu.upper.far, mu.upper.diff))
 
 @
 \end{enumerate}
