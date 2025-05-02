@@ -85,10 +85,65 @@ for the the further observations.
   where $f_Z(\cdot)$ and $F_Z(\cdot)$ are the Gaussian PDF and CDF and skew is the
   skewness of the data. What is the potential error in the computation of the 
   $p$-value when testing $H_0: \mu_X=0; H_a: \mu_X<0$ using the zebra finch further data? 
+\begin{knitrout}\scriptsize
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{## 1a}
+\hldef{zebra.finches.dat} \hlkwb{<-} \hlkwd{read_csv}\hldef{(}\hlsng{"zebrafinches.csv"}\hldef{)}
 
+\hldef{further.vec} \hlkwb{<-} \hldef{zebra.finches.dat}\hlopt{$}\hldef{further}
+\hldef{skew} \hlkwb{<-} \hlkwd{skewness}\hldef{(further.vec)}
+\hldef{n} \hlkwb{<-} \hlkwd{length}\hldef{(further.vec)}
+
+\hldef{further.test} \hlkwb{<-} \hlkwd{t.test}\hldef{(}\hlkwc{x}\hldef{=further.vec,} \hlkwc{mu} \hldef{=} \hlnum{0}\hldef{,} \hlkwc{alternative} \hldef{=} \hlsng{"less"}\hldef{)}
+\hldef{t.far} \hlkwb{<-} \hldef{further.test}\hlopt{$}\hldef{statistic} \hlcom{#finding the t value }
+\hldef{fz} \hlkwb{<-} \hlkwd{dnorm}\hldef{(t.far)}
+\hldef{Fz} \hlkwb{<-} \hlkwd{pnorm}\hldef{(t.far)}
+\hldef{(error} \hlkwb{=} \hldef{(skew} \hlopt{/} \hlkwd{sqrt}\hldef{(n))} \hlopt{*} \hldef{((}\hlnum{2} \hlopt{*} \hldef{(t.far}\hlopt{^}\hlnum{2}\hldef{)} \hlopt{+} \hlnum{1}\hldef{)} \hlopt{/} \hlnum{6}\hldef{)} \hlopt{*} \hldef{fz)}
+\end{alltt}
+\begin{verbatim}
+##             t 
+## -1.226006e-13
+\end{verbatim}
+\begin{alltt}
+\hldef{prob} \hlkwb{<-} \hldef{error} \hlopt{+} \hldef{Fz}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
   \item Compute the error for $t$ statistics from -10 to 10 and plot a line
   that shows the error across $t$. Continue to use the skewness and 
   the sample size for the zebra finch further data.
+\begin{knitrout}\scriptsize
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hldef{t.vecs} \hlkwb{<-} \hlkwd{seq}\hldef{(}\hlopt{-}\hlnum{10}\hldef{,}\hlnum{10}\hldef{,}\hlnum{0.1}\hldef{)}
+\hldef{results} \hlkwb{<-} \hlkwd{tibble}\hldef{(}
+  \hlkwc{t} \hldef{= t.vecs,}
+  \hlkwc{fz} \hldef{=} \hlkwd{dnorm}\hldef{(t.vecs),}
+  \hlkwc{error} \hldef{= (skew} \hlopt{/} \hlkwd{sqrt}\hldef{(n))} \hlopt{*} \hldef{((}\hlnum{2} \hlopt{*} \hldef{(t.vecs}\hlopt{^}\hlnum{2}\hldef{)} \hlopt{+} \hlnum{1}\hldef{)} \hlopt{/} \hlnum{6}\hldef{)} \hlopt{*} \hlkwd{dnorm}\hldef{(t.vecs)}
+\hldef{)}
+
+\hldef{error.plot} \hlkwb{<-} \hlkwd{ggplot}\hldef{(results)} \hlopt{+}
+  \hlkwd{theme_bw}\hldef{()}\hlopt{+}
+  \hlkwd{geom_line}\hldef{(}\hlkwd{aes}\hldef{(}\hlkwc{x} \hldef{= t,} \hlkwc{y} \hldef{= error))}\hlopt{+}
+  \hlkwd{labs}\hldef{(}
+    \hlkwc{x} \hldef{=} \hlsng{"T values"}\hldef{,}
+    \hlkwc{title} \hldef{=} \hlsng{"Edgeworth Approximation Error"}
+  \hldef{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{figure}[H]
+\begin{center}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=\maxwidth]{figure/unnamed-chunk-4-1} 
+\end{knitrout}
+\caption{Edgeworth Error across span of t values}
+\label{plot1} 
+\end{center}
+\end{figure}
 
   \item Suppose we wanted to have a tail probability within 10\% of the desired
   $\alpha=0.05$. Recall we did a left-tailed test using the further data.
@@ -97,10 +152,26 @@ for the the further observations.
   \[0.10 \alpha  \stackrel{set}{=} \underbrace{\frac{\text{skew}}{\sqrt{n}} \frac{(2t^2+1)}{6} f_Z(t)}_{\textrm{error}},\]
   which yields
   \[ n = \left(\frac{\text{skew}}{6(0.10\alpha)} (2t^2 + 1) f_Z(t)\right)^2.\]
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hldef{alpha} \hlkwb{=} \hlnum{0.05}
+\hldef{t.val} \hlkwb{<-} \hlkwd{qnorm}\hldef{(alpha)}
+\hldef{pdf} \hlkwb{<-} \hlkwd{dnorm}\hldef{(t.val)}
+\hldef{(target.size} \hlkwb{=} \hldef{((skew} \hlopt{/} \hldef{(}\hlnum{6}\hlopt{*}\hldef{(}\hlnum{0.1}\hlopt{*}\hldef{alpha)))} \hlopt{*} \hldef{(}\hlnum{2} \hlopt{*} \hldef{(t.val}\hlopt{^}\hlnum{2}\hldef{)} \hlopt{+} \hlnum{1}\hldef{)} \hlopt{*} \hldef{pdf)}\hlopt{^}\hlnum{2}\hldef{)}
+\end{alltt}
+\begin{verbatim}
+## [1] 520.8876
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+We would need a sample size of at least 521 for a left-tailed test.
+
 \end{enumerate}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Question 3
+% Question 2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \item Complete the following steps to revisit the analyses from lab 11 using the
@@ -116,16 +187,230 @@ sampling distribution of the $T$ statistic:
   resamples shifted to ensure they are consistent with the null hypotheses at the average 
   (i.e., here ensure the shifted resamples are 0 on average, corresponding
   to $t=0$, for each case). 
-  \item Compute the bootstrap $p$-value for each test using the shifted resamples. 
+\\ \textbf{Answer: } All of the shifted means of the t values are so small that they are practically 0.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{###########################}
+\hlcom{#  Part 2:Boot strapping  #}
+\hlcom{###########################}
+\hldef{R} \hlkwb{<-} \hlnum{10000}
+\hldef{mu0} \hlkwb{=} \hlnum{0}
+\hldef{fur.sd} \hlkwb{<-} \hlkwd{sd}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{further)}
+\hldef{close.sd} \hlkwb{<-} \hlkwd{sd}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{closer)}
+\hldef{diff.sd} \hlkwb{<-} \hlkwd{sd}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{diff)}
+
+\hldef{resample} \hlkwb{<-} \hlkwd{tibble}\hldef{(}\hlkwc{close.t}\hldef{=}\hlkwd{numeric}\hldef{(R),}
+                   \hlkwc{far.t}\hldef{=}\hlkwd{numeric}\hldef{(R),}
+                   \hlkwc{diff.t}\hldef{=}\hlkwd{numeric}\hldef{(R),}
+                   \hlkwc{close.mean} \hldef{=}\hlkwd{numeric}\hldef{(R),}
+                   \hlkwc{far.mean} \hldef{=}\hlkwd{numeric}\hldef{(R),}
+                   \hlkwc{diff.mean} \hldef{=}\hlkwd{numeric}\hldef{(R)}
+\hldef{)}
+\hldef{resamples.shifted} \hlkwb{<-} \hlkwd{tibble}\hldef{()}
+
+
+\hlkwa{for}\hldef{(i} \hlkwa{in} \hlnum{1}\hlopt{:}\hldef{R)\{}
+  \hldef{close.sample} \hlkwb{<-} \hlkwd{sample}\hldef{(}\hlkwc{x}\hldef{=zebra.finches.dat}\hlopt{$}\hldef{closer,}
+                         \hlkwc{size}\hldef{=n,}
+                         \hlkwc{replace}\hldef{=T)}
+  \hldef{far.sample} \hlkwb{<-} \hlkwd{sample}\hldef{(}\hlkwc{x}\hldef{=zebra.finches.dat}\hlopt{$}\hldef{further,}
+                       \hlkwc{size}\hldef{=n,}
+                       \hlkwc{replace}\hldef{=T)}
+  \hldef{diff.sample} \hlkwb{<-} \hlkwd{sample}\hldef{(}\hlkwc{x}\hldef{=zebra.finches.dat}\hlopt{$}\hldef{diff,}
+                        \hlkwc{size}\hldef{=n,}
+                        \hlkwc{replace}\hldef{=T)}
+
+  \hldef{resample}\hlopt{$}\hldef{close.t[i]} \hlkwb{=} \hldef{(}\hlkwd{mean}\hldef{(close.sample)}\hlopt{-}\hldef{mu0)}\hlopt{/}\hldef{(close.sd}\hlopt{/}\hlkwd{sqrt}\hldef{(n))}
+  \hldef{resample}\hlopt{$}\hldef{far.t[i]} \hlkwb{=} \hldef{(}\hlkwd{mean}\hldef{(far.sample)}\hlopt{-}\hldef{mu0)}\hlopt{/}\hldef{(fur.sd}\hlopt{/}\hlkwd{sqrt}\hldef{(n))}
+  \hldef{resample}\hlopt{$}\hldef{diff.t[i]} \hlkwb{=} \hldef{(}\hlkwd{mean}\hldef{(diff.sample)}\hlopt{-}\hldef{mu0)}\hlopt{/}\hldef{(diff.sd}\hlopt{/}\hlkwd{sqrt}\hldef{(n))}
+  \hldef{resample}\hlopt{$}\hldef{close.mean[i]} \hlkwb{=} \hlkwd{mean}\hldef{(close.sample)}
+  \hldef{resample}\hlopt{$}\hldef{far.mean[i]} \hlkwb{=} \hlkwd{mean}\hldef{(far.sample)}
+  \hldef{resample}\hlopt{$}\hldef{diff.mean[i]} \hlkwb{=} \hlkwd{mean}\hldef{(diff.sample)}
+
+\hldef{\}}
+
+\hlcom{## shifting the means}
+\hldef{close.change} \hlkwb{<-} \hlkwd{mean}\hldef{(resample}\hlopt{$}\hldef{close.t)}
+\hldef{far.change} \hlkwb{<-} \hlkwd{mean}\hldef{(resample}\hlopt{$}\hldef{far.t)}
+\hldef{diff.change} \hlkwb{<-} \hlkwd{mean}\hldef{(resample}\hlopt{$}\hldef{diff.t)}
+
+\hldef{resamples.shifted} \hlkwb{<-} \hldef{resample |>}
+  \hlkwd{mutate}\hldef{(}\hlkwc{close.shifted} \hldef{= close.t} \hlopt{-} \hldef{close.change)  |>}
+  \hlkwd{mutate}\hldef{(}\hlkwc{far.shifted} \hldef{= far.t} \hlopt{-} \hldef{far.change) |>}
+  \hlkwd{mutate}\hldef{(}\hlkwc{diff.shifted} \hldef{= diff.t} \hlopt{-} \hldef{diff.change) |>}
+  \hlkwd{select}\hldef{(}\hlkwd{c}\hldef{(close.shifted, far.shifted, diff.shifted ))}
+\hldef{(}\hlkwd{mean}\hldef{(resamples.shifted}\hlopt{$}\hldef{close.shifted))}
+\end{alltt}
+\begin{verbatim}
+## [1] -3.974598e-17
+\end{verbatim}
+\begin{alltt}
+\hldef{(}\hlkwd{mean}\hldef{(resamples.shifted}\hlopt{$}\hldef{far.shifted))}
+\end{alltt}
+\begin{verbatim}
+## [1] -3.303358e-16
+\end{verbatim}
+\begin{alltt}
+\hldef{(}\hlkwd{mean}\hldef{(resamples.shifted}\hlopt{$}\hldef{diff.shifted))}
+\end{alltt}
+\begin{verbatim}
+## [1] 6.024785e-16
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+  \item Compute the bootstrap $p$-value for each test using the shifted resamples.
   How do these compare to the $t$-test $p$-values?
+
+\textbf{Answer: }Table \ref{table1} below shows that the comparison of the p-values. While t-tests did produce nonzero p-values, they were so small that they are essentially 0, which is what the bootstrap test shows for each case.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# Bootstrap P-Value}
+\hldef{boot.p.closer} \hlkwb{<-} \hlkwd{mean}\hldef{(resamples.shifted}\hlopt{$}\hldef{close.shifted} \hlopt{>=} \hldef{close.change)}
+\hldef{boot.p.far} \hlkwb{<-} \hlkwd{mean}\hldef{(resamples.shifted}\hlopt{$}\hldef{far.shifted} \hlopt{<=} \hldef{far.change)}
+\hldef{low} \hlkwb{=} \hlopt{-}\hldef{diff.change}
+\hldef{high} \hlkwb{=} \hldef{diff.change}
+\hldef{p.low} \hlkwb{<-} \hlkwd{mean}\hldef{(resamples.shifted}\hlopt{$}\hldef{diff.shifted} \hlopt{<=} \hldef{low)}
+\hldef{p.high} \hlkwb{<-} \hlkwd{mean}\hldef{(resamples.shifted}\hlopt{$}\hldef{diff.shifted} \hlopt{>=} \hldef{high)}
+\hldef{boot.p.diff} \hlkwb{<-} \hldef{p.low} \hlopt{+}\hldef{p.high}
+
+\hlcom{# T-Test P-Value}
+\hldef{test.close} \hlkwb{<-} \hlkwd{t.test}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{closer,}
+                     \hlkwc{mu} \hldef{=} \hlnum{0}\hldef{,}
+                     \hlkwc{alternative} \hldef{=} \hlsng{"greater"}\hldef{)}
+\hldef{close.ttest.p} \hlkwb{<-} \hldef{test.close}\hlopt{$}\hldef{p.value}
+
+\hldef{test.far} \hlkwb{<-} \hlkwd{t.test}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{further,}
+                     \hlkwc{mu} \hldef{=} \hlnum{0}\hldef{,}
+                     \hlkwc{alternative} \hldef{=} \hlsng{"less"}\hldef{)}
+\hldef{far.ttest.p} \hlkwb{<-} \hldef{test.far}\hlopt{$}\hldef{p.value}
+
+\hldef{test.diff} \hlkwb{<-} \hlkwd{t.test}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{diff,}
+                   \hlkwc{mu} \hldef{=} \hlnum{0}\hldef{,}
+                   \hlkwc{alternative} \hldef{=} \hlsng{"two.sided"}\hldef{)}
+\hldef{diff.ttest.p} \hlkwb{<-} \hldef{test.diff}\hlopt{$}\hldef{p.value}
+
+\hldef{comparisons.p} \hlkwb{<-} \hlkwd{tibble}\hldef{(}\hlsng{" "}\hldef{=} \hlkwd{c}\hldef{(}\hlsng{"close"}\hldef{,} \hlsng{"far"}\hldef{,} \hlsng{"diff"}\hldef{),} \hlkwc{Bootstrapped} \hldef{=}
+                        \hlkwd{c}\hldef{(boot.p.closer, boot.p.far, boot.p.diff),}
+                      \hlkwc{t.test} \hldef{=} \hlkwd{c}\hldef{(close.ttest.p, far.ttest.p, diff.ttest.p))}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrr}
+  \hline
+ Data & Bootstrapped & T test \\ 
+  \hline
+ closer & 0.00 & 0.00 \\ 
+ further & 0.00 & 0.00 \\ 
+ difference & 0.00 & 0.00 \\ 
+   \hline
+\end{tabular} \caption{Comparison of p-values between bootstrapping and T test} \label{table1}
+\end{table}
+
+
     \item What is the 5$^{th}$ percentile of the shifted resamples under the null hypothesis? 
+
+\textbf{Answer: }Table \ref{table2} below shows that the comparison of the 5$^{th}$ percentile of the shifted resamples: closer = -1.54, further = -1.70, and difference = -1.61. They approximate the T-test, which is -1.71.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{## Part c}
+\hldef{close.5th} \hlkwb{<-} \hlkwd{quantile}\hldef{(resamples.shifted}\hlopt{$}\hldef{close.shifted,} \hlnum{0.05}\hldef{)}
+\hldef{far.5th} \hlkwb{<-} \hlkwd{quantile}\hldef{(resamples.shifted}\hlopt{$}\hldef{far.shifted,} \hlnum{0.05}\hldef{)}
+\hldef{diff.5th} \hlkwb{<-} \hlkwd{quantile}\hldef{(resamples.shifted}\hlopt{$}\hldef{diff.shifted,} \hlnum{0.05}\hldef{)}
+
+\hldef{close.percentile.t} \hlkwb{<-} \hlkwd{qt}\hldef{(}\hlnum{0.05}\hldef{,} \hlkwc{df} \hldef{= n}\hlopt{-}\hlnum{1}\hldef{)}
+\hldef{far.percentile.t} \hlkwb{<-} \hlkwd{qt}\hldef{(}\hlnum{0.05}\hldef{,} \hlkwc{df} \hldef{= n}\hlopt{-}\hlnum{1}\hldef{)}
+\hldef{diff.percentile.t} \hlkwb{<-} \hlkwd{qt}\hldef{(}\hlnum{0.05}\hldef{,} \hlkwc{df} \hldef{= n}\hlopt{-}\hlnum{1}\hldef{)}
+
+\hldef{comparisons.percentiles} \hlkwb{<-} \hlkwd{tibble}\hldef{(}\hlsng{" "}\hldef{=} \hlkwd{c}\hldef{(}\hlsng{"close"}\hldef{,} \hlsng{"far"}\hldef{,} \hlsng{"diff"}\hldef{),} \hlkwc{sampled} \hldef{=}
+                         \hlkwd{c}\hldef{(close.5th, far.5th, diff.5th),}
+                       \hlkwc{t.val} \hldef{=}\hlkwd{c}\hldef{(close.percentile.t, far.percentile.t,}
+                                 \hldef{diff.percentile.t))}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrr}
+  \hline
+Data & Bootstrapped & T-test \\ 
+  \hline
+  Closer & -1.54 & -1.71 \\ 
+  Further & -1.70 & -1.71 \\ 
+  Difference & -1.61 & -1.71 \\ 
+   \hline
+\end{tabular} \caption{Comparison of the 5th percentile between bootstrapping and T test} \label{table2}
+\end{table}
+
   Note this value approximates $t_{0.05, n-1}$. Compare these values in each case.
-  \item Compute the bootstrap confidence intervals using the resamples. How do these 
-  compare to the $t$-test confidence intervals?
+  \item Compute the bootstrap confidence intervals using the resamples. How do these compare to the $t$-test confidence intervals?
+ 
+ \textbf{Answer: }Table \ref{table3} below shows that the comparison of the confidence intervals of the shifted resamples with those of the T-tests. Respectively for the closer, further, and difference cases, bootstrapping produced 95\% confidence intervals of (0.12, 0.18), (-0.26, -0.17), and (0.27, 0.42) while the T-tests produced CIs of (0.12, 0.20), (-0.26, -0.15), and (0.27, 0.45). They are pretty similar to each other for each case 
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{## Part d}
+\hldef{lower.close} \hlkwb{<-} \hlkwd{quantile}\hldef{(resample}\hlopt{$}\hldef{close.mean,} \hlnum{0.025}\hldef{)}
+\hldef{upper.close} \hlkwb{<-} \hlkwd{quantile}\hldef{(resample}\hlopt{$}\hldef{close.mean,} \hlnum{0.925}\hldef{)}
+\hldef{Bootstrap.CI.close} \hlkwb{<-} \hlkwd{c}\hldef{(lower.close, upper.close)}
+  \hldef{lower.far} \hlkwb{<-} \hlkwd{quantile}\hldef{(resample}\hlopt{$}\hldef{far.mean,} \hlnum{0.025}\hldef{)}
+\hldef{upper.far} \hlkwb{<-} \hlkwd{quantile}\hldef{(resample}\hlopt{$}\hldef{far.mean,} \hlnum{0.925}\hldef{)}
+\hldef{Bootstrap.CI.far} \hlkwb{<-} \hlkwd{c}\hldef{(lower.far, upper.far)}
+  \hldef{lower.diff} \hlkwb{<-} \hlkwd{quantile}\hldef{(resample}\hlopt{$}\hldef{diff.mean,} \hlnum{0.025}\hldef{)}
+\hldef{upper.diff} \hlkwb{<-} \hlkwd{quantile}\hldef{(resample}\hlopt{$}\hldef{diff.mean,} \hlnum{0.925}\hldef{)}
+\hldef{Bootstrap.CI.diff} \hlkwb{<-} \hlkwd{c}\hldef{(lower.diff, upper.diff)}
+
+\hlcom{# t tests confidence intervals}
+\hldef{test.close} \hlkwb{<-} \hlkwd{t.test}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{closer,}
+                    \hlkwc{mu} \hldef{=} \hlnum{0}\hldef{,} \hlkwc{conf.level} \hldef{=} \hlnum{0.95}\hldef{,}
+                    \hlkwc{alternative} \hldef{=} \hlsng{"two.sided"}\hldef{)}
+\hldef{close.CI} \hlkwb{<-} \hldef{test.close}\hlopt{$}\hldef{conf.int}
+
+\hldef{test.far} \hlkwb{<-} \hlkwd{t.test}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{further,}
+                    \hlkwc{mu} \hldef{=} \hlnum{0}\hldef{,} \hlkwc{conf.level} \hldef{=} \hlnum{0.95}\hldef{,}
+                    \hlkwc{alternative} \hldef{=} \hlsng{"two.sided"}\hldef{)}
+\hldef{far.CI} \hlkwb{<-} \hldef{test.far}\hlopt{$}\hldef{conf.int}
+
+\hldef{test.diff} \hlkwb{<-} \hlkwd{t.test}\hldef{(zebra.finches.dat}\hlopt{$}\hldef{diff,}
+                    \hlkwc{mu} \hldef{=} \hlnum{0}\hldef{,} \hlkwc{conf.level} \hldef{=} \hlnum{0.95}\hldef{,}
+                    \hlkwc{alternative} \hldef{=} \hlsng{"two.sided"}\hldef{)}
+\hldef{diff.CI} \hlkwb{<-} \hldef{test.diff}\hlopt{$}\hldef{conf.int}
+\hldef{comparisons.CI} \hlkwb{<-} \hlkwd{tibble}\hldef{(}
+  \hlsng{"Condition"} \hldef{=} \hlkwd{c}\hldef{(}\hlsng{"close"}\hldef{,} \hlsng{"far"}\hldef{,} \hlsng{"diff"}\hldef{),}
+  \hlsng{"Bootstrapped Lower"} \hldef{=} \hlkwd{c}\hldef{(lower.close, lower.far, lower.diff),}
+  \hlsng{"Bootstrapped Upper"} \hldef{=} \hlkwd{c}\hldef{(upper.close, upper.far, upper.diff),}
+  \hlsng{"t-test Lower"} \hldef{=} \hlkwd{c}\hldef{(close.CI[}\hlnum{1}\hldef{], far.CI[}\hlnum{1}\hldef{], diff.CI[}\hlnum{1}\hldef{]),}
+  \hlsng{"t-test Upper"} \hldef{=} \hlkwd{c}\hldef{(close.CI[}\hlnum{2}\hldef{], far.CI[}\hlnum{2}\hldef{], diff.CI[}\hlnum{2}\hldef{]))}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrr}
+  \hline
+ Data & Bootstrapped Lower & Bootstrapped Upper & t-test Lower & t-test Upper \\ 
+  \hline
+ close & 0.12 & 0.18 & 0.12 & 0.20 \\ 
+ far & -0.26 & -0.17 & -0.26 & -0.15 \\ 
+ diff & 0.27 & 0.42 & 0.27 & 0.45 \\ 
+   \hline
+\end{tabular} \caption{Comparison of the Confidence Interval between bootstrapping and T test, separated into lower and upper bounds} \label{table3}
+\end{table}
+
+
 \end{enumerate}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Question 4
+% Question 3
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \item Complete the following steps to revisit the analyses from lab 11 using the
@@ -133,7 +418,11 @@ randomization procedure.
 \begin{enumerate}
 \item Now, consider the zebra finch data. We do not know the generating distributions
 for the closer, further, and difference data, so perform the randomization procedure
+
+
   \item Compute the randomization test $p$-value for each test.
+
+
   \item Compute the randomization confidence interval by iterating over values of $\mu_0$.\\
   \textbf{Hint:} You can ``search" for the lower bound from $Q_1$ and subtracting by 0.0001, 
   and the upper bound using $Q_3$ and increasing by 0.0001. You will continue until you find 

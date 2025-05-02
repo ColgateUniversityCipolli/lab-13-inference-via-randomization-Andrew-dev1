@@ -16,6 +16,11 @@
 \begin{document}
 <<echo=F, message=F, warning=F>>=
 library(tidyverse)
+library(pwr)
+library(e1071)
+library(boot.pval)
+library(boot)
+library(xtable)
 @
 
 \begin{enumerate}
@@ -37,10 +42,53 @@ for the the further observations.
   where $f_Z(\cdot)$ and $F_Z(\cdot)$ are the Gaussian PDF and CDF and skew is the
   skewness of the data. What is the potential error in the computation of the 
   $p$-value when testing $H_0: \mu_X=0; H_a: \mu_X<0$ using the zebra finch further data? 
+<<message =F, warning =F, size = 'scriptsize'>>=
+## 1a
+zebra.finches.dat <- read_csv("zebrafinches.csv")
 
+further.vec <- zebra.finches.dat$further
+skew <- skewness(further.vec)
+n <- length(further.vec)
+
+further.test <- t.test(x=further.vec, mu = 0, alternative = "less")
+t.far <- further.test$statistic #finding the t value 
+fz <- dnorm(t.far)
+Fz <- pnorm(t.far)
+(error = (skew / sqrt(n)) * ((2 * (t.far^2) + 1) / 6) * fz)
+
+
+prob <- error + Fz
+@
   \item Compute the error for $t$ statistics from -10 to 10 and plot a line
   that shows the error across $t$. Continue to use the skewness and 
   the sample size for the zebra finch further data.
+<<message =F, warning =F, size = 'scriptsize'>>=
+t.vecs <- seq(-10,10,0.1)
+results <- tibble(
+  t = t.vecs,
+  fz = dnorm(t.vecs), 
+  error = (skew / sqrt(n)) * ((2 * (t.vecs^2) + 1) / 6) * dnorm(t.vecs)
+)
+
+error.plot <- ggplot(results) +
+  theme_bw()+
+  geom_line(aes(x = t, y = error))+
+  labs(
+    x = "T values",
+    title = "Edgeworth Approximation Error"
+  )
+
+@
+
+\begin{figure}[H]
+\begin{center}
+<<echo=FALSE, warning=FALSE, message=FALSE, fig.dim=c(5,3.5)>>=
+error.plot
+@
+\caption{Edgeworth Error across span of t values}
+\label{plot1} 
+\end{center}
+\end{figure}
 
   \item Suppose we wanted to have a tail probability within 10\% of the desired
   $\alpha=0.05$. Recall we did a left-tailed test using the further data.
@@ -49,10 +97,19 @@ for the the further observations.
   \[0.10 \alpha  \stackrel{set}{=} \underbrace{\frac{\text{skew}}{\sqrt{n}} \frac{(2t^2+1)}{6} f_Z(t)}_{\textrm{error}},\]
   which yields
   \[ n = \left(\frac{\text{skew}}{6(0.10\alpha)} (2t^2 + 1) f_Z(t)\right)^2.\]
+
+<<message =F, warning =F, size = 'scriptsize'>>=
+alpha = 0.05
+t.val <- qnorm(alpha) 
+pdf <- dnorm(t.val)
+(target.size = ((skew / (6*(0.1*alpha))) * (2 * (t.val^2) + 1) * pdf)^2)
+@
+We would need a sample size of at least 521 for a left-tailed test.
+
 \end{enumerate}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Question 3
+% Question 2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \item Complete the following steps to revisit the analyses from lab 11 using the
@@ -68,16 +125,206 @@ sampling distribution of the $T$ statistic:
   resamples shifted to ensure they are consistent with the null hypotheses at the average 
   (i.e., here ensure the shifted resamples are 0 on average, corresponding
   to $t=0$, for each case). 
-  \item Compute the bootstrap $p$-value for each test using the shifted resamples. 
+\\ \textbf{Answer: } All of the shifted means of the t values are so small that they are practically 0.
+
+<<message =F, warning =F, size = 'scriptsize'>>=
+
+###########################
+#  Part 2:Boot strapping  #
+###########################
+R <- 10000
+mu0 = 0 
+fur.sd <- sd(zebra.finches.dat$further)
+close.sd <- sd(zebra.finches.dat$closer)
+diff.sd <- sd(zebra.finches.dat$diff)
+
+resample <- tibble(close.t=numeric(R),
+                   far.t=numeric(R),
+                   diff.t=numeric(R),
+                   close.mean =numeric(R),
+                   far.mean =numeric(R),
+                   diff.mean =numeric(R)
+)
+resamples.shifted <- tibble()
+
+
+for(i in 1:R){
+  close.sample <- sample(x=zebra.finches.dat$closer,
+                         size=n,
+                         replace=T)
+  far.sample <- sample(x=zebra.finches.dat$further,
+                       size=n,
+                       replace=T)
+  diff.sample <- sample(x=zebra.finches.dat$diff,
+                        size=n,
+                        replace=T)
+
+  resample$close.t[i] = (mean(close.sample)-mu0)/(close.sd/sqrt(n))
+  resample$far.t[i] = (mean(far.sample)-mu0)/(fur.sd/sqrt(n))
+  resample$diff.t[i] = (mean(diff.sample)-mu0)/(diff.sd/sqrt(n))
+  resample$close.mean[i] = mean(close.sample)
+  resample$far.mean[i] = mean(far.sample)
+  resample$diff.mean[i] = mean(diff.sample)
+  
+}
+
+## shifting the means
+close.change <- mean(resample$close.t) 
+far.change <- mean(resample$far.t) 
+diff.change <- mean(resample$diff.t) 
+
+resamples.shifted <- resample |>
+  mutate(close.shifted = close.t - close.change)  |>
+  mutate(far.shifted = far.t - far.change) |>
+  mutate(diff.shifted = diff.t - diff.change) |>
+  select(c(close.shifted, far.shifted, diff.shifted ))
+(mean(resamples.shifted$close.shifted))
+(mean(resamples.shifted$far.shifted))
+(mean(resamples.shifted$diff.shifted))
+@
+  \item Compute the bootstrap $p$-value for each test using the shifted resamples.
   How do these compare to the $t$-test $p$-values?
+
+\textbf{Answer: }Table \ref{table1} below shows that the comparison of the p-values. While t-tests did produce nonzero p-values, they were so small that they are essentially 0, which is what the bootstrap test shows for each case.
+
+<<message =F, warning =F, size = 'scriptsize'>>=
+# Bootstrap P-Value
+boot.p.closer <- mean(resamples.shifted$close.shifted >= close.change)
+boot.p.far <- mean(resamples.shifted$far.shifted <= far.change)
+low = -diff.change
+high = diff.change
+p.low <- mean(resamples.shifted$diff.shifted <= low)
+p.high <- mean(resamples.shifted$diff.shifted >= high)
+boot.p.diff <- p.low +p.high
+
+# T-Test P-Value
+test.close <- t.test(zebra.finches.dat$closer,
+                     mu = 0,
+                     alternative = "greater")
+close.ttest.p <- test.close$p.value
+
+test.far <- t.test(zebra.finches.dat$further,
+                     mu = 0,
+                     alternative = "less")
+far.ttest.p <- test.far$p.value
+
+test.diff <- t.test(zebra.finches.dat$diff,
+                   mu = 0,
+                   alternative = "two.sided")
+diff.ttest.p <- test.diff$p.value
+
+comparisons.p <- tibble(" "= c("close", "far", "diff"), Bootstrapped = 
+                        c(boot.p.closer, boot.p.far, boot.p.diff),
+                      t.test = c(close.ttest.p, far.ttest.p, diff.ttest.p))
+
+@
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrr}
+  \hline
+ Data & Bootstrapped & T test \\ 
+  \hline
+ closer & 0.00 & 0.00 \\ 
+ further & 0.00 & 0.00 \\ 
+ difference & 0.00 & 0.00 \\ 
+   \hline
+\end{tabular} \caption{Comparison of p-values between bootstrapping and T test} \label{table1}
+\end{table}
+
+
     \item What is the 5$^{th}$ percentile of the shifted resamples under the null hypothesis? 
+
+\textbf{Answer: }Table \ref{table2} below shows that the comparison of the 5$^{th}$ percentile of the shifted resamples: closer = -1.54, further = -1.70, and difference = -1.61. They approximate the T-test, which is -1.71.
+<<message =F, warning =F, size = 'scriptsize'>>=
+## Part c
+close.5th <- quantile(resamples.shifted$close.shifted, 0.05)
+far.5th <- quantile(resamples.shifted$far.shifted, 0.05)
+diff.5th <- quantile(resamples.shifted$diff.shifted, 0.05)
+
+close.percentile.t <- qt(0.05, df = n-1)
+far.percentile.t <- qt(0.05, df = n-1)
+diff.percentile.t <- qt(0.05, df = n-1)
+
+comparisons.percentiles <- tibble(" "= c("close", "far", "diff"), sampled = 
+                         c(close.5th, far.5th, diff.5th),
+                       t.val =c(close.percentile.t, far.percentile.t, 
+                                 diff.percentile.t))
+@
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrr}
+  \hline
+Data & Bootstrapped & T-test \\ 
+  \hline
+  Closer & -1.54 & -1.71 \\ 
+  Further & -1.70 & -1.71 \\ 
+  Difference & -1.61 & -1.71 \\ 
+   \hline
+\end{tabular} \caption{Comparison of the 5th percentile between bootstrapping and T test} \label{table2}
+\end{table}
+
   Note this value approximates $t_{0.05, n-1}$. Compare these values in each case.
-  \item Compute the bootstrap confidence intervals using the resamples. How do these 
-  compare to the $t$-test confidence intervals?
+  \item Compute the bootstrap confidence intervals using the resamples. How do these compare to the $t$-test confidence intervals?
+ 
+ \textbf{Answer: }Table \ref{table3} below shows that the comparison of the confidence intervals of the shifted resamples with those of the T-tests. Respectively for the closer, further, and difference cases, bootstrapping produced 95\% confidence intervals of (0.12, 0.18), (-0.26, -0.17), and (0.27, 0.42) while the T-tests produced CIs of (0.12, 0.20), (-0.26, -0.15), and (0.27, 0.45). They are pretty similar to each other for each case 
+
+<<message =F, warning =F, size = 'scriptsize'>>=
+## Part d
+lower.close <- quantile(resample$close.mean, 0.025)
+upper.close <- quantile(resample$close.mean, 0.925)
+Bootstrap.CI.close <- c(lower.close, upper.close)
+
+lower.far <- quantile(resample$far.mean, 0.025)
+upper.far <- quantile(resample$far.mean, 0.925)
+Bootstrap.CI.far <- c(lower.far, upper.far)
+
+lower.diff <- quantile(resample$diff.mean, 0.025)
+upper.diff <- quantile(resample$diff.mean, 0.925)
+Bootstrap.CI.diff <- c(lower.diff, upper.diff)
+
+# t tests confidence intervals
+test.close <- t.test(zebra.finches.dat$closer,
+                    mu = 0, conf.level = 0.95,
+                    alternative = "two.sided")
+close.CI <- test.close$conf.int
+
+test.far <- t.test(zebra.finches.dat$further,
+                    mu = 0, conf.level = 0.95,
+                    alternative = "two.sided")
+far.CI <- test.far$conf.int
+
+test.diff <- t.test(zebra.finches.dat$diff,
+                    mu = 0, conf.level = 0.95,
+                    alternative = "two.sided")
+diff.CI <- test.diff$conf.int
+
+comparisons.CI <- tibble(
+  "Condition" = c("close", "far", "diff"),
+  "Bootstrapped Lower" = c(lower.close, lower.far, lower.diff),
+  "Bootstrapped Upper" = c(upper.close, upper.far, upper.diff),
+  "t-test Lower" = c(close.CI[1], far.CI[1], diff.CI[1]),
+  "t-test Upper" = c(close.CI[2], far.CI[2], diff.CI[2]))
+@  
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrr}
+  \hline
+ Data & Bootstrapped Lower & Bootstrapped Upper & t-test Lower & t-test Upper \\ 
+  \hline
+ close & 0.12 & 0.18 & 0.12 & 0.20 \\ 
+ far & -0.26 & -0.17 & -0.26 & -0.15 \\ 
+ diff & 0.27 & 0.42 & 0.27 & 0.45 \\ 
+   \hline
+\end{tabular} \caption{Comparison of the Confidence Interval between bootstrapping and T test, separated into lower and upper bounds} \label{table3}
+\end{table}
+
+
 \end{enumerate}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Question 4
+% Question 3
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \item Complete the following steps to revisit the analyses from lab 11 using the
@@ -85,11 +332,57 @@ randomization procedure.
 \begin{enumerate}
 \item Now, consider the zebra finch data. We do not know the generating distributions
 for the closer, further, and difference data, so perform the randomization procedure
+<<message =F, warning =F, size = 'scriptsize'>>=
+mu0 <- 0
+R <- 10000
+randomized <- tibble(close.means = numeric(R), far.means = numeric(R),
+                  diff.means = numeric(R))
+
+shifted.x.close <- zebra.finches.dat$closer - mu0
+shifted.x.far <- zebra.finches.dat$further - mu0
+shifted.x.diff <- zebra.finches.dat$diff - mu0
+
+for(i in 1:R){
+  curr.rand1 <- shifted.x.close *
+    sample(x = c(-1, 1),
+           size = length(shifted.x.close),
+           replace = T)
+  curr.rand2 <- shifted.x.far *
+    sample(x = c(-1, 1),
+           size = length(shifted.x.far),
+           replace = T)
+  curr.rand3 <- shifted.x.diff *
+    sample(x = c(-1, 1),
+           size = length(shifted.x.diff),
+           replace = T)
+  
+  randomized$close.means[i] <- mean(curr.rand1)
+  randomized$far.means[i] <- mean(curr.rand2)
+  randomized$diff.means[i] <- mean(curr.rand3)
+}
+
+randomized <- randomized |>
+  mutate(close.means = close.means + mu0,
+         far.means = far.means + mu0, 
+         diff.means = diff.means + mu0 ) # shifting data back
+
+@
+
   \item Compute the randomization test $p$-value for each test.
+<<message =F, warning =F, size = 'scriptsize'>>=
+
+@
+
   \item Compute the randomization confidence interval by iterating over values of $\mu_0$.\\
+<<message =F, warning =F, size = 'scriptsize'>>=
+
+@
   \textbf{Hint:} You can ``search" for the lower bound from $Q_1$ and subtracting by 0.0001, 
   and the upper bound using $Q_3$ and increasing by 0.0001. You will continue until you find 
   the first value for which the two-sided $p$-value is greater than or equal to 0.05.
+<<message =F, warning =F, size = 'scriptsize'>>=
+
+@
 \end{enumerate}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
